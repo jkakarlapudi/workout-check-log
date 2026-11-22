@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workout Check Log — Ram &amp; Jay</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f6f7f9;color:#111;line-height:1.45}
+  .wrap{max-width:640px;margin:0 auto;padding:16px 14px 48px}
+  header{background:#111;color:#fff;border-radius:16px;padding:20px 18px;margin-bottom:14px}
+  header h1{margin:0 0 6px;font-size:24px;line-height:1.2}
+  header p{margin:4px 0;color:#d6d6d6;font-size:15px}
+  .card{background:#fff;border:1px solid #e3e6ea;border-radius:16px;padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 8px;font-size:19px}
+  .muted{color:#666;font-size:14px}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#eee;color:#333}
+  .pill.done{background:#dcfce7;color:#166534}
+  .pill.notdone{background:#fee2e2;color:#991b1b}
+  .pill.rest{background:#e0e7ff;color:#3730a3}
+  .pill.blank{background:#f1f5f9;color:#475569}
+  .today-meta{font-size:15px;margin:6px 0}
+  .btn{display:block;width:100%;min-height:56px;border:0;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;margin:8px 0}
+  .btn-done{background:#16a34a;color:#fff}
+  .btn-notdone{background:#dc2626;color:#fff}
+  .btn-clear{background:#e5e7eb;color:#111}
+  .btn-secondary{background:#111;color:#fff;min-height:48px;font-size:16px}
+  .btn-ghost{background:#fff;border:1px solid #cbd5e1;color:#111;min-height:48px;font-size:16px}
+  .btn[aria-pressed="true"]{outline:3px solid #111;outline-offset:2px}
+  .btn:disabled{opacity:.55;cursor:wait}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:420px){.grid2{grid-template-columns:1fr}}
+  .stat{font-size:15px;margin:6px 0}
+  .stat b{font-size:20px}
+  .banner{background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:12px;padding:12px 14px;font-weight:700;margin-bottom:14px}
+  .notice{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:15px}
+  .notice.ok{background:#f0fdf4;border-color:#86efac;color:#166534}
+  .notice.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+  .dayrow{width:100%;text-align:left;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:12px 14px;margin-bottom:10px;cursor:pointer;font-size:15px}
+  .dayrow.selected{border-color:#111;outline:2px solid #111}
+  .dayrow.today{border-color:#16a34a}
+  .dayrow .rowtop{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .dayrow .session{color:#333;font-weight:600}
+  .dayrow .statuses{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  label{display:block;font-weight:700;margin:10px 0 6px;font-size:15px}
+  input[type="password"],input[type="text"]{width:100%;min-height:52px;border:1px solid #cbd5e1;border-radius:12px;padding:12px 14px;font-size:16px}
+  code{background:#f1f5f9;padding:2px 6px;border-radius:6px;font-size:13px}
+  details{margin-top:8px}
+  summary{cursor:pointer;font-weight:700;padding:8px 0}
+  footer{color:#666;font-size:13px;text-align:center;margin-top:20px}
+  .small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Workout Check Log — Ram &amp; Jay</h1>
+    <p>45-day plan: Mon 9 Nov 2026 – Wed 23 Dec 2026</p>
+    <p>Tap Done or Not Done. The log lives in this repo in <code>data/workout-log.csv</code>.</p>
+  </header>
+
+  <div id="statusBox" class="notice" role="status">Loading the log…</div>
+  <div id="bothBanner" class="banner" hidden>🎉 Both done today — Ram &amp; Jay!</div>
+
+  <section class="card" id="todayCard" aria-label="Today">
+    <h2>Today</h2>
+    <p class="today-meta" id="todayMeta">—</p>
+    <p><span id="todayPill" class="pill blank">No entry yet</span></p>
+    <p class="muted" id="todaySession">—</p>
+  </section>
+
+  <div class="grid2">
+    <section class="card" aria-label="Ram">
+      <h2>Ram</h2>
+      <p class="stat">Today: <span id="ramToday" class="pill blank">—</span></p>
+      <p class="stat">Total Done: <b id="ramTotal">0</b> / 45</p>
+      <p class="stat">Current streak: <b id="ramStreak">0</b> day(s)</p>
+      <button class="btn btn-done" id="ramDoneBtn" type="button">✅ Ram — Done</button>
+      <button class="btn btn-notdone" id="ramNotBtn" type="button">❌ Ram — Not Done</button>
+      <button class="btn btn-clear" id="ramClearBtn" type="button">Clear today</button>
+    </section>
+    <section class="card" aria-label="Jay">
+      <h2>Jay</h2>
+      <p class="stat">Today: <span id="jayToday" class="pill blank">—</span></p>
+      <p class="stat">Total Done: <b id="jayTotal">0</b> / 45</p>
+      <p class="stat">Current streak: <b id="jayStreak">0</b> day(s)</p>
+      <button class="btn btn-done" id="jayDoneBtn" type="button">✅ Jay — Done</button>
+      <button class="btn btn-notdone" id="jayNotBtn" type="button">❌ Jay — Not Done</button>
+      <button class="btn btn-clear" id="jayClearBtn" type="button">Clear today</button>
+    </section>
+  </div>
+
+  <section class="card" id="editorCard" aria-label="Log a day">
+    <h2>Log a day</h2>
+    <p class="muted" id="editorMeta">Tap any day below to log it, or use the Today buttons above.</p>
+    <div id="editorButtons" hidden>
+      <p><b id="editorTitle">—</b></p>
+      <button class="btn btn-done" id="edRamDone" type="button">✅ Ram — Done</button>
+      <button class="btn btn-notdone" id="edRamNot" type="button">❌ Ram — Not Done</button>
+      <button class="btn btn-done" id="edJayDone" type="button">✅ Jay — Done</button>
+      <button class="btn btn-notdone" id="edJayNot" type="button">❌ Jay — Not Done</button>
+      <button class="btn btn-clear" id="edClear" type="button">Clear both for this day</button>
+    </div>
+  </section>
+
+  <section class="card" aria-label="All 45 days">
+    <h2>All 45 days</h2>
+    <p class="muted">Tap a day to log it. Rest days can still be logged — they don’t break a streak.</p>
+    <div id="logList"></div>
+  </section>
+
+  <section class="card" aria-label="Settings">
+    <h2>Settings — saving to GitHub</h2>
+    <p class="muted">No token is stored in this site’s code or in any file in the repo. If you paste a token here, it is stored <b>only</b> in this browser’s localStorage, and it is sent <b>only</b> to <code>api.github.com</code> when saving.</p>
+    <p id="tokenStatus" class="stat">Token: <b>Not set — read-only mode</b></p>
+    <label for="tokenInput">Fine-grained GitHub token</label>
+    <input type="password" id="tokenInput" placeholder="Paste token here" autocomplete="off">
+    <button class="btn btn-secondary" id="saveTokenBtn" type="button">Save token on this device</button>
+    <button class="btn btn-ghost" id="clearTokenBtn" type="button">Remove token from this device</button>
+    <button class="btn btn-ghost" id="downloadBtn" type="button">⬇ Download updated CSV</button>
+    <details>
+      <summary>How to make a token</summary>
+      <p class="muted">On GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Give it access to <b>only</b> the repo <code>jkakarlapudi/workout-check-log</code>, with <b>Contents: Read and write</b>. No other permissions. Set a short expiry. Paste it here on each phone that needs to save — Ram and Jay each paste the token on their own phone. Never share a screenshot of the token.</p>
+    </details>
+  </section>
+
+  <footer>Source of truth: <code>data/workout-log.csv</code> in this repo · Public link: https://jkakarlapudi.github.io/workout-check-log/</footer>
+</div>
+<script>
+'use strict';
+const OWNER = 'jkakarlapudi';
+const REPO = 'workout-check-log';
+const BRANCH = 'main';
+const CSV_PATH = 'data/workout-log.csv';
+const TOKEN_KEY = 'wcl_github_token';
+const FALLBACK_CSV = `Date,Day,Weekday,Planned session,Ram,Jay,Notes
+2026-11-09,1,Monday,Chest & Back 1,,,
+2026-11-10,2,Tuesday,Arms 1,,,
+2026-11-11,3,Wednesday,Legs & Shoulders,,,
+2026-11-12,4,Thursday,Rest,,,
+2026-11-13,5,Friday,Chest & Back 2,,,
+2026-11-14,6,Saturday,Arms 2 & Delts,,,
+2026-11-15,7,Sunday,Legs 2 & Posterior Chain,,,
+2026-11-16,8,Monday,Chest & Back 1,,,
+2026-11-17,9,Tuesday,Arms 1,,,
+2026-11-18,10,Wednesday,Legs & Shoulders,,,
+2026-11-19,11,Thursday,Rest,,,
+2026-11-20,12,Friday,Chest & Back 2,,,
+2026-11-21,13,Saturday,Arms 2 & Delts,,,
+2026-11-22,14,Sunday,Legs 2 & Posterior Chain,,,
+2026-11-23,15,Monday,Chest & Back 1,,,
+2026-11-24,16,Tuesday,Arms 1,,,
+2026-11-25,17,Wednesday,Legs & Shoulders,,,
+2026-11-26,18,Thursday,Rest,,,
+2026-11-27,19,Friday,Chest & Back 2,,,
+2026-11-28,20,Saturday,Arms 2 & Delts,,,
+2026-11-29,21,Sunday,Legs 2 & Posterior Chain,,,
+2026-11-30,22,Monday,Chest & Back 1,,,
+2026-12-01,23,Tuesday,Arms 1,,,
+2026-12-02,24,Wednesday,Legs & Shoulders,,,
+2026-12-03,25,Thursday,Rest,,,
+2026-12-04,26,Friday,Chest & Back 2,,,
+2026-12-05,27,Saturday,Arms 2 & Delts,,,
+2026-12-06,28,Sunday,Legs 2 & Posterior Chain,,,
+2026-12-07,29,Monday,Chest & Back 1,,,
+2026-12-08,30,Tuesday,Arms 1,,,
+2026-12-09,31,Wednesday,Legs & Shoulders,,,
+2026-12-10,32,Thursday,Rest,,,
+2026-12-11,33,Friday,Chest & Back 2,,,
+2026-12-12,34,Saturday,Arms 2 & Delts,,,
+2026-12-13,35,Sunday,Legs 2 & Posterior Chain,,,
+2026-12-14,36,Monday,Chest & Back 1,,,
+2026-12-15,37,Tuesday,Arms 1,,,
+2026-12-16,38,Wednesday,Legs & Shoulders,,,
+2026-12-17,39,Thursday,Rest,,,
+2026-12-18,40,Friday,Chest & Back 2,,,
+2026-12-19,41,Saturday,Arms 2 & Delts,,,
+2026-12-20,42,Sunday,Legs 2 & Posterior Chain,,,
+2026-12-21,43,Monday,Chest & Back 1,,,
+2026-12-22,44,Tuesday,Arms 1,,,
+2026-12-23,45,Wednesday,Legs & Shoulders,,,`;
+
+let rows = [];
+let selectedDate = null;
+let token = '';
+try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { token = ''; }
+let saving = false;
+let localChanges = false;
+let dataSource = 'fallback';
+
+function todayISO() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const parts = iso.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+function parseCSV(text) {
+  const out = [];
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+  if (!lines.length) return out;
+  const headers = parseLine(lines[0]);
+  for (let i = 1; i < lines.length; i++) {
+    const vals = parseLine(lines[i]);
+    const obj = {};
+    headers.forEach(function (h, idx) { obj[h] = (vals[idx] || '').trim(); });
+    if (obj.Date) out.push(obj);
+  }
+  return out;
+}
+function parseLine(line) {
+  const res = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else { inQ = !inQ; }
+    } else if (c === ',' && !inQ) { res.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  res.push(cur);
+  return res;
+}
+function escCSV(v) {
+  v = (v == null ? '' : String(v));
+  if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+  return v;
+}
+function toCSV(list) {
+  const headers = ['Date', 'Day', 'Weekday', 'Planned session', 'Ram', 'Jay', 'Notes'];
+  const lines = [headers.join(',')];
+  list.forEach(function (r) { lines.push(headers.map(function (h) { return escCSV(r[h] || ''); }).join(',')); });
+  return lines.join('\n') + '\n';
+}
+function b64encode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function pillHTML(v) {
+  if (v === 'Done') return '<span class="pill done">Done</span>';
+  if (v === 'Not Done') return '<span class="pill notdone">Not Done</span>';
+  return '<span class="pill blank">—</span>';
+}
+function findRow(date) { return rows.find(function (r) { return r.Date === date; }); }
+function totalDone(person) { return rows.filter(function (r) { return r[person] === 'Done'; }).length; }
+function streakFor(person) {
+  const today = todayISO();
+  let idx = rows.findIndex(function (r) { return r.Date === today; });
+  if (idx < 0) idx = rows.reduce(function (acc, r, i) { return r.Date <= today ? i : acc; }, -1);
+  if (idx < 0) return 0;
+  let streak = 0; let started = false;
+  for (let j = idx; j >= 0; j--) {
+    const r = rows[j];
+    if (r['Planned session'] === 'Rest') continue;
+    if (!started) {
+      if (r[person] === 'Done') { started = true; streak = 1; }
+      else if (j === idx) { continue; }
+      else { break; }
+    } else {
+      if (r[person] === 'Done') streak++;
+      else break;
+    }
+  }
+  return streak;
+}
+function setStatus(msg, kind) {
+  const el = document.getElementById('statusBox');
+  el.textContent = msg;
+  el.className = 'notice' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
+}
+function render() {
+  const today = todayISO();
+  const t = findRow(today);
+  const meta = document.getElementById('todayMeta');
+  if (t) {
+    meta.textContent = fmtDate(t.Date) + ' · Day ' + t.Day + ' · ' + t.Weekday;
+    document.getElementById('todaySession').textContent = 'Planned: ' + t['Planned session'] + (t['Planned session'] === 'Rest' ? ' — rest day, logging still allowed and it does not break a streak.' : '');
+  } else if (rows.length) {
+    meta.textContent = fmtDate(today) + ' — outside the 45-day plan (9 Nov – 23 Dec 2026).';
+    document.getElementById('todaySession').textContent = 'Pick a day below to view or log it.';
+  } else {
+    meta.textContent = 'No log loaded yet.';
+  }
+  const ramT = t ? (t.Ram || '') : '';
+  const jayT = t ? (t.Jay || '') : '';
+  document.getElementById('ramToday').outerHTML = '<span id="ramToday" class="pill ' + (ramT === 'Done' ? 'done' : ramT === 'Not Done' ? 'notdone' : 'blank') + '">' + (ramT || '—') + '</span>';
+  document.getElementById('jayToday').outerHTML = '<span id="jayToday" class="pill ' + (jayT === 'Done' ? 'done' : jayT === 'Not Done' ? 'notdone' : 'blank') + '">' + (jayT || '—') + '</span>';
+  document.getElementById('todayPill').textContent = (ramT || '—') + ' / ' + (jayT || '—');
+  document.getElementById('ramTotal').textContent = String(totalDone('Ram'));
+  document.getElementById('jayTotal').textContent = String(totalDone('Jay'));
+  document.getElementById('ramStreak').textContent = String(streakFor('Ram'));
+  document.getElementById('jayStreak').textContent = String(streakFor('Jay'));
+  document.getElementById('bothBanner').hidden = !(t && t.Ram === 'Done' && t.Jay === 'Done');
+  document.getElementById('ramDoneBtn').setAttribute('aria-pressed', ramT === 'Done' ? 'true' : 'false');
+  document.getElementById('ramNotBtn').setAttribute('aria-pressed', ramT === 'Not Done' ? 'true' : 'false');
+  document.getElementById('jayDoneBtn').setAttribute('aria-pressed', jayT === 'Done' ? 'true' : 'false');
+  document.getElementById('jayNotBtn').setAttribute('aria-pressed', jayT === 'Not Done' ? 'true' : 'false');
+  const ts = document.getElementById('tokenStatus');
+  ts.innerHTML = token ? 'Token: <b>Set on this device — saving to GitHub is on</b>' : 'Token: <b>Not set — read-only mode</b>';
+  if (!token) {
+    setStatus(localChanges ? 'Read-only mode: you have local changes that are NOT saved to GitHub yet. Use “Download updated CSV” below, or add a token in Settings to save them.' : 'Read-only mode: no token set. You can still tap Done / Not Done to preview, and download the updated CSV — but nothing is saved to GitHub until a token is added in Settings.');
+  }
+  const list = document.getElementById('logList');
+  list.innerHTML = '';
+  rows.forEach(function (r) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dayrow' + (r.Date === today ? ' today' : '') + (r.Date === selectedDate ? ' selected' : '');
+    const rest = r['Planned session'] === 'Rest' ? ' <span class="pill rest">Rest</span>' : '';
+    b.innerHTML = '<span class="rowtop"><span><b>Day ' + r.Day + '</b> · ' + fmtDate(r.Date) + ' · ' + r.Weekday + '</span><span>' + (r.Date === today ? '<span class="pill done">Today</span>' : '') + '</span></span>' +
+      '<span class="session">' + r['Planned session'] + '</span>' + rest +
+      '<span class="statuses">Ram: ' + pillHTML(r.Ram || '') + ' Jay: ' + pillHTML(r.Jay || '') + '</span>';
+    b.addEventListener('click', function () { selectDay(r.Date); });
+    list.appendChild(b);
+  });
+  const ed = document.getElementById('editorButtons');
+  const em = document.getElementById('editorMeta');
+  if (selectedDate) {
+    const s = findRow(selectedDate);
+    if (s) {
+      ed.hidden = false;
+      document.getElementById('editorTitle').textContent = 'Day ' + s.Day + ' · ' + fmtDate(s.Date) + ' · ' + s.Weekday + ' · ' + s['Planned session'];
+      em.textContent = 'Logging for ' + fmtDate(s.Date) + '. Ram: ' + (s.Ram || '—') + ' · Jay: ' + (s.Jay || '—');
+    }
+  } else { ed.hidden = true; }
+}
+function selectDay(date) { selectedDate = date; render(); document.getElementById('editorCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+async function saveToGitHub(changedRow) {
+  if (!token) return;
+  saving = true; render(); setStatus('Saving…', '');
+  try {
+    const getRes = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + CSV_PATH + '?ref=' + BRANCH, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' } });
+    if (!getRes.ok) throw new Error('Could not read the file from GitHub (HTTP ' + getRes.status + '). Check the token has Contents read/write for this repo.');
+    const getData = await getRes.json();
+    const csv = toCSV(rows);
+    const msg = 'Log Day ' + changedRow.Day + ': Ram ' + (changedRow.Ram || '—') + ', Jay ' + (changedRow.Jay || '—');
+    const putRes = await fetch('https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + CSV_PATH, { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, content: b64encode(csv), sha: getData.sha, branch: BRANCH }) });
+    if (!putRes.ok) { const errText = await putRes.text(); throw new Error('GitHub save failed (HTTP ' + putRes.status + '): ' + errText.slice(0, 300)); }
+    localChanges = false;
+    setStatus('Saved to GitHub — ' + msg, 'ok');
+    await load(true);
+  } catch (err) {
+    setStatus('Save failed: ' + (err && err.message ? err.message : String(err)) + ' Your change is still shown locally — use Download updated CSV.', 'err');
+  } finally { saving = false; render(); }
+}
+async function setLog(person, date, value) {
+  const r = findRow(date);
+  if (!r || saving) return;
+  r[person] = value;
+  localChanges = true;
+  render();
+  if (token) { await saveToGitHub(r); }
+  else { setStatus('Local change only (no token): Ram ' + (r.Ram || '—') + ', Jay ' + (r.Jay || '—') + ' for Day ' + r.Day + '. Download the CSV or add a token to save it to GitHub.'); }
+}
+async function load(skipRender) {
+  try {
+    const res = await fetch(CSV_PATH + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const parsed = parseCSV(text);
+    if (parsed.length !== 45) throw new Error('Expected 45 rows, got ' + parsed.length);
+    rows = parsed; dataSource = 'repo';
+    if (!skipRender) setStatus('Loaded from the repo (' + dataSource + '). ' + (token ? 'Saving to GitHub is on.' : 'Read-only mode — add a token in Settings to save.'), token ? 'ok' : '');
+  } catch (err) {
+    rows = parseCSV(FALLBACK_CSV); dataSource = 'fallback (offline copy in this page)';
+    if (!skipRender) setStatus('Could not fetch the repo file (' + (err && err.message ? err.message : String(err)) + ') — showing the copy embedded in this page. Add a token and tap Save to refresh from GitHub.', 'err');
+  }
+  if (!skipRender) render();
+}
+function downloadCSV() {
+  const blob = new Blob([toCSV(rows)], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'workout-log.csv'; a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+}
+document.getElementById('ramDoneBtn').addEventListener('click', function () { setLog('Ram', todayISO(), 'Done'); });
+document.getElementById('ramNotBtn').addEventListener('click', function () { setLog('Ram', todayISO(), 'Not Done'); });
+document.getElementById('ramClearBtn').addEventListener('click', function () { setLog('Ram', todayISO(), ''); });
+document.getElementById('jayDoneBtn').addEventListener('click', function () { setLog('Jay', todayISO(), 'Done'); });
+document.getElementById('jayNotBtn').addEventListener('click', function () { setLog('Jay', todayISO(), 'Not Done'); });
+document.getElementById('jayClearBtn').addEventListener('click', function () { setLog('Jay', todayISO(), ''); });
+document.getElementById('edRamDone').addEventListener('click', function () { if (selectedDate) setLog('Ram', selectedDate, 'Done'); });
+document.getElementById('edRamNot').addEventListener('click', function () { if (selectedDate) setLog('Ram', selectedDate, 'Not Done'); });
+document.getElementById('edJayDone').addEventListener('click', function () { if (selectedDate) setLog('Jay', selectedDate, 'Done'); });
+document.getElementById('edJayNot').addEventListener('click', function () { if (selectedDate) setLog('Jay', selectedDate, 'Not Done'); });
+document.getElementById('edClear').addEventListener('click', async function () { if (!selectedDate) return; const r = findRow(selectedDate); if (!r) return; r.Ram = ''; r.Jay = ''; localChanges = true; render(); if (token) await saveToGitHub(r); });
+document.getElementById('saveTokenBtn').addEventListener('click', function () {
+  const v = document.getElementById('tokenInput').value.trim();
+  if (!v) { setStatus('Paste a token first.', 'err'); return; }
+  try { localStorage.setItem(TOKEN_KEY, v); } catch (e) {}
+  token = v; document.getElementById('tokenInput').value = '';
+  setStatus('Token saved on this device only. It is never in the repo files.', 'ok'); render();
+});
+document.getElementById('clearTokenBtn').addEventListener('click', function () {
+  try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+  token = ''; setStatus('Token removed from this device. Read-only mode.', ''); render();
+});
+document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+load(false);
+</script>
+</body>
+</html>
