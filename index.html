@@ -17,19 +17,35 @@
   .notice{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:15px}
   .notice.ok{background:#f0fdf4;border-color:#86efac;color:#166534}
   .notice.err{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
-  .dayrow{background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:14px;margin-bottom:10px}
-  .dayrow.today{border-color:#16a34a;outline:2px solid #16a34a}
-  .dateline{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:17px;margin-bottom:10px}
-  .todaytag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700;background:#dcfce7;color:#166534}
-  .people{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:420px){.people{grid-template-columns:1fr}}
+  /* Today block — the one prominent card */
+  .today-card{border:2px solid #16a34a;background:#f0fdf4}
+  .today-card h2{margin:0 0 2px;font-size:19px}
+  .today-date{font-size:21px;font-weight:800;margin:2px 0 12px}
+  .today-people{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:420px){.today-people{grid-template-columns:1fr}}
   .person .name{display:block;font-weight:700;font-size:16px;margin-bottom:6px}
   .btnrow{display:flex;flex-direction:column;gap:6px}
-  .btn{display:block;width:100%;min-height:48px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#111;font-size:16px;font-weight:700;cursor:pointer}
+  .btn{display:block;width:100%;min-height:56px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#111;font-size:17px;font-weight:700;cursor:pointer}
   .btn-done[aria-pressed="true"]{background:#16a34a;border-color:#16a34a;color:#fff}
   .btn-notdone[aria-pressed="true"]{background:#dc2626;border-color:#dc2626;color:#fff}
   .btn-clear{background:#fff;font-weight:600;min-height:40px;font-size:14px;color:#555}
   .btn:disabled{opacity:.55;cursor:wait}
+  /* Compact list — a small table, one short row per date */
+  .log-table{background:#fff;border:1px solid #e3e6ea;border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .table-head,.row{display:grid;grid-template-columns:112px 1fr 1fr;gap:6px;align-items:center}
+  .table-head{padding:8px 10px;background:#f1f5f9;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+  .table-head span:nth-child(2),.table-head span:nth-child(3){text-align:center}
+  .row{padding:5px 10px;border-top:1px solid #eef1f4;min-height:46px}
+  .row.today{background:#f0fdf4;box-shadow:inset 3px 0 0 #16a34a}
+  .row .date{font-size:13px;font-weight:600;white-space:nowrap}
+  .row .date .tag{display:block;font-size:11px;font-weight:700;color:#166534}
+  .cell{display:flex;gap:4px;align-items:center;justify-content:center}
+  .mini-btn{min-height:32px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini-btn.done[aria-pressed="true"]{background:#16a34a;border-color:#16a34a;color:#fff}
+  .mini-btn.notdone[aria-pressed="true"]{background:#dc2626;border-color:#dc2626;color:#fff}
+  .mini-btn:disabled{opacity:.55;cursor:wait}
+  .clear-x{min-width:24px;min-height:32px;padding:0 4px;border:0;background:transparent;color:#94a3b8;font-size:16px;line-height:1;cursor:pointer}
+  .clear-x:hover{color:#111}
   .btn-secondary{background:#111;color:#fff;min-height:48px;font-size:16px;border:0;border-radius:12px;width:100%;font-weight:700;cursor:pointer;margin:8px 0}
   .btn-ghost{background:#fff;border:1px solid #cbd5e1;color:#111;min-height:48px;font-size:16px;border-radius:12px;width:100%;cursor:pointer;margin:8px 0}
   label{display:block;font-weight:700;margin:10px 0 6px;font-size:15px}
@@ -50,8 +66,20 @@
 
   <div id="statusBox" class="notice" role="status">Loading the log…</div>
 
+  <!-- 1. Today — first container, prominent -->
+  <section class="card today-card" aria-label="Today">
+    <h2>Today</h2>
+    <p class="today-date" id="todayDate">—</p>
+    <div class="today-people" id="todayPeople"></div>
+    <p class="muted" id="todayNote" style="margin:10px 0 0">Tap Done or Not Done — it logs today straight away.</p>
+  </section>
+
+  <!-- 2. The list — compact table, small rows -->
   <section aria-label="Log">
-    <div id="logList"></div>
+    <div class="log-table">
+      <div class="table-head"><span>Date</span><span>Jay</span><span>Ram</span></div>
+      <div id="logList"></div>
+    </div>
   </section>
 
   <section class="card" aria-label="Settings">
@@ -131,7 +159,6 @@ try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) { token = ''; }
 let saving = false;
 let localChanges = false;
 let dataSource = 'fallback';
-let scrolledToToday = false;
 
 function todayISO() {
   const d = new Date();
@@ -193,41 +220,64 @@ function setStatus(msg, kind) {
   el.textContent = msg;
   el.className = 'notice' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
 }
-function personBlock(person, r) {
-  const v = r[person] || '';
+/* Large buttons for the Today card */
+function todayPersonBlock(person, r) {
+  const v = r ? (r[person] || '') : '';
+  const disabled = r ? '' : ' disabled';
   return '<div class="person"><span class="name">' + person + '</span><div class="btnrow">' +
-    '<button class="btn btn-done" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="Done" aria-pressed="' + (v === 'Done' ? 'true' : 'false') + '">Done</button>' +
-    '<button class="btn btn-notdone" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="Not Done" aria-pressed="' + (v === 'Not Done' ? 'true' : 'false') + '">Not Done</button>' +
-    '<button class="btn btn-clear" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="" aria-pressed="false">Clear</button>' +
+    '<button class="btn btn-done" type="button" data-person="' + person + '" data-date="' + (r ? r.Date : '') + '" data-value="Done" aria-pressed="' + (v === 'Done' ? 'true' : 'false') + '"' + disabled + '>Done</button>' +
+    '<button class="btn btn-notdone" type="button" data-person="' + person + '" data-date="' + (r ? r.Date : '') + '" data-value="Not Done" aria-pressed="' + (v === 'Not Done' ? 'true' : 'false') + '"' + disabled + '>Not Done</button>' +
+    '<button class="btn btn-clear" type="button" data-person="' + person + '" data-date="' + (r ? r.Date : '') + '" data-value=""' + disabled + '>Clear</button>' +
     '</div></div>';
+}
+/* Small cell for one person in a compact table row */
+function miniCell(person, r) {
+  const v = r[person] || '';
+  return '<div class="cell">' +
+    '<button class="mini-btn done" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="Done" aria-pressed="' + (v === 'Done' ? 'true' : 'false') + '" aria-label="' + person + ' Done on ' + r.Date + '">Done</button>' +
+    '<button class="mini-btn notdone" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="Not Done" aria-pressed="' + (v === 'Not Done' ? 'true' : 'false') + '" aria-label="' + person + ' Not Done on ' + r.Date + '">Not Done</button>' +
+    (v ? '<button class="clear-x" type="button" data-person="' + person + '" data-date="' + r.Date + '" data-value="" aria-label="Clear ' + person + ' on ' + r.Date + '" title="Clear">×</button>' : '') +
+    '</div>';
 }
 function render() {
   const today = todayISO();
+  const t = findRow(today);
   const ts = document.getElementById('tokenStatus');
   ts.innerHTML = token ? 'Token: <b>Set on this device — saving to GitHub is on</b>' : 'Token: <b>Not set — read-only mode</b>';
   if (!token) {
     setStatus(localChanges ? 'Read-only mode: you have local changes that are NOT saved to GitHub yet. Use “Download updated CSV” below, or add a token in Settings to save them.' : 'Read-only mode: no token set. You can still tap Done / Not Done to preview, and download the updated CSV — but nothing is saved to GitHub until a token is added in Settings.');
   }
+  /* 1. Today block */
+  document.getElementById('todayDate').textContent = fmtDate(today);
+  document.getElementById('todayPeople').innerHTML = todayPersonBlock('Jay', t) + todayPersonBlock('Ram', t);
+  document.getElementById('todayNote').textContent = t
+    ? 'Tap Done or Not Done — it logs today straight away.'
+    : 'Today is not in this log — tap a date in the list below to log it.';
+  /* 2. Compact table — one small row per date, oldest first */
   const list = document.getElementById('logList');
   list.innerHTML = '';
   rows.forEach(function (r) {
     const isToday = r.Date === today;
     const div = document.createElement('div');
-    div.className = 'dayrow' + (isToday ? ' today' : '');
+    div.className = 'row' + (isToday ? ' today' : '');
     div.id = 'row-' + r.Date;
-    div.innerHTML = '<div class="dateline"><b>' + fmtDate(r.Date) + '</b>' + (isToday ? '<span class="todaytag">Today</span>' : '') + '</div>' +
-      '<div class="people">' + personBlock('Jay', r) + personBlock('Ram', r) + '</div>';
+    div.innerHTML = '<span class="date">' + fmtDate(r.Date) + (isToday ? '<span class="tag">Today</span>' : '') + '</span>' +
+      miniCell('Jay', r) + miniCell('Ram', r);
     list.appendChild(div);
   });
-  list.querySelectorAll('button[data-person]').forEach(function (btn) {
+  /* Wire every Done / Not Done / Clear button (today card + table rows).
+     Tapping an already-selected value clears it; tapping the other value overwrites it. */
+  document.querySelectorAll('button[data-person]').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      setLog(btn.getAttribute('data-person'), btn.getAttribute('data-date'), btn.getAttribute('data-value'));
+      const person = btn.getAttribute('data-person');
+      const date = btn.getAttribute('data-date');
+      const value = btn.getAttribute('data-value');
+      const r = findRow(date);
+      if (!r) return;
+      setLog(person, date, (value && r[person] === value) ? '' : value);
     });
   });
-  if (!scrolledToToday) {
-    const todayEl = document.getElementById('row-' + today);
-    if (todayEl) { scrolledToToday = true; setTimeout(function () { todayEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100); }
-  }
+  /* No auto-scroll: the Today block stays at the top. */
 }
 async function saveToGitHub(changedRow) {
   if (!token) return;
